@@ -1,0 +1,268 @@
+/*
+Cleaning SQL data
+*/
+
+select 
+* 
+from 
+PortfolioProject.dbo.NashHousing 
+
+-- standardize the Date format
+
+select saledate
+from PortfolioProject.dbo.NashHousing
+
+select saledate, convert(date, saledate)
+from PortfolioProject.dbo.NashHousing
+
+-- unable to update directly so altering the table columns and then updating the date format
+
+update NashHousing
+SET saledate = convert(date, saledate)
+-----------------------------------------------------
+--altering table 
+
+alter table NashHousing
+add saledateconverted date;
+
+update NashHousing
+SET saledateconverted = convert(date, saledate)
+-------------------------------------------------------------------------------------------------------------------------------------
+-------------
+
+---Populate property address data 
+
+select PropertyAddress
+from PortfolioProject.dbo.NashHousing
+
+-- property address contains NULL value
+select PropertyAddress
+from PortfolioProject.dbo.NashHousing
+where PropertyAddress is null
+
+select *
+from PortfolioProject.dbo.NashHousing
+where PropertyAddress is null
+
+-- ordering the data 
+select *
+from PortfolioProject.dbo.NashHousing
+--where PropertyAddress is null
+order by ParcelID
+
+--joining the table to itself 
+-- find out which parcel ID is duplicated with the same property Address and 
+
+select *
+from PortfolioProject.dbo.NashHousing a
+join PortfolioProject.dbo.NashHousing b
+on a.ParcelID=b.ParcelID
+and a.UniqueID<> b.UniqueID
+
+--populating the table which containing Property address is null
+
+select a.ParcelID,a.PropertyAddress,b.ParcelID, b.PropertyAddress
+from PortfolioProject.dbo.NashHousing a
+join PortfolioProject.dbo.NashHousing b
+on a.ParcelID=b.ParcelID
+and a.UniqueID<> b.UniqueID
+where a.PropertyAddress is null 
+
+-- need to map  b.propertyaddress to Null vales since the Parcel ID is the same 
+
+select a.ParcelID,a.PropertyAddress,b.ParcelID, b.PropertyAddress, ISNULL(a.PropertyAddress,b.PropertyAddress)
+from PortfolioProject.dbo.NashHousing a
+join PortfolioProject.dbo.NashHousing b
+on a.ParcelID=b.ParcelID
+and a.UniqueID<> b.UniqueID
+where a.PropertyAddress is null 
+
+-- let's update the table
+update a
+SET PropertyAddress = ISNULL(a.PropertyAddress,b.PropertyAddress)
+from PortfolioProject.dbo.NashHousing a
+join PortfolioProject.dbo.NashHousing b
+on a.ParcelID=b.ParcelID
+and a.UniqueID<> b.UniqueID
+where a.PropertyAddress is null 
+
+-- run the below, won't be able to see any NUll 
+
+select a.ParcelID,a.PropertyAddress,b.ParcelID, b.PropertyAddress
+from PortfolioProject.dbo.NashHousing a
+join PortfolioProject.dbo.NashHousing b
+on a.ParcelID=b.ParcelID
+and a.UniqueID<> b.UniqueID
+where a.PropertyAddress is null 
+
+
+-------------------------------------------------------------------------------------------
+------- 
+--breaking down the Address into individual columns (address, city, state)
+---------------------------------------------------------------------------------------------
+select *
+from PortfolioProject.dbo.NashHousing
+order by ParcelID
+
+--select only the property address
+
+select PropertyAddress
+from PortfolioProject.dbo.NashHousing
+
+-- divided into two col
+
+select
+SUBSTRING(PropertyAddress,1, CHARINDEX(',' ,PropertyAddress )-1)as Address
+,SUBSTRING(PropertyAddress,CHARINDEX(',' ,PropertyAddress )+1,len(PropertyAddress)) as address
+
+from PortfolioProject.dbo.NashHousing
+
+--adding these columns in NashHousing with the name of PropertySplitAddress and PropertySplitCity using alter and update 
+
+alter table NashHousing
+add PropertySplitAddress nvarchar(255);
+
+update NashHousing
+set PropertySplitAddress = SUBSTRING(PropertyAddress,1, CHARINDEX(',' ,PropertyAddress )-1)
+
+select * 
+from PortfolioProject.dbo.NashHousing
+
+alter table NashHousing
+add PropertySplitCity nvarchar(255);
+
+update NashHousing
+SET PropertySplitCity = SUBSTRING(PropertyAddress,CHARINDEX(',' ,PropertyAddress )+1,len(PropertyAddress))
+
+
+select * 
+from PortfolioProject.dbo.NashHousing
+
+----Breaking Down the OwnerAddress using PARSENAME
+
+select OwnerAddress
+from PortfolioProject.dbo.NashHousing
+order by OwnerAddress desc
+
+select 
+PARSENAME(replace(OwnerAddress,',','.'),3) 
+,parsename(replace(OwnerAddress,',','.'),2) 
+,parsename(replace(OwnerAddress,',','.'),1) 
+from PortfolioProject.dbo.NashHousing
+order by OwnerAddress desc
+
+--alter and update the table 
+
+alter table NashHousing
+Add OwnersplitAddress varchar(255);
+
+update NashHousing
+SET OwnersplitAddress= PARSENAME(replace(OwnerAddress,',','.'),3)
+
+
+select * 
+from PortfolioProject.dbo.NashHousing
+
+
+alter table NashHousing
+Add Ownersplitcity varchar(255);
+
+update NashHousing
+SET Ownersplitcity= parsename(replace(OwnerAddress,',','.'),2)
+
+
+select * 
+from PortfolioProject.dbo.NashHousing
+
+alter table NashHousing
+Add OwnersplitState varchar(255);
+
+update NashHousing
+SET OwnersplitState= parsename(replace(OwnerAddress,',','.'),2)
+
+
+select * 
+from PortfolioProject.dbo.NashHousing
+
+--------------------------------------------------------------------------------------------------
+-----------------
+
+--- change Y and N to Yes and No in sold as vacant
+
+select SoldASVacant
+from PortfolioProject.dbo.NashHousing
+
+select distinct(SoldASVacant),COUNT(SoldASVacant)
+from PortfolioProject.dbo.NashHousing
+group by SoldASVacant
+order by 2
+
+select SoldASVacant
+,case when SoldASVacant ='Y' then 'Yes'
+     when SoldASVacant= 'N' then 'No'
+	 else SoldASVacant
+	 END
+from PortfolioProject.dbo.NashHousing
+
+update NashHousing
+SET SoldASVacant= case when SoldASVacant ='Y' then 'Yes'
+     when SoldASVacant= 'N' then 'No'
+	 else SoldASVacant
+	 END
+----------------------
+--Delete unused columns
+
+select *
+from PortfolioProject.dbo.NashHousing
+order by ParcelID 
+
+
+alter table PortfolioProject.dbo.NashHousing
+drop column PropertyAddress,SaleDate,TaxDistrict,OwnerAddress
+
+---- 
+-- identify the duplicates 
+
+with RownumCTE as (
+select *,
+ROW_NUMBER() over(
+partition by 
+         ParcelID,
+		 SalePrice,
+		 OwnerName
+		 order by 
+		 UniqueID 
+		 )row_num
+
+from PortfolioProject.dbo.NashHousing
+ 
+)
+select* 
+from RownumCTE
+where row_num>1
+order by  ParcelID
+
+-- remove the duplicate 
+
+with RownumCTE as (
+select *,
+ROW_NUMBER() over(
+partition by 
+         ParcelID,
+		 SalePrice,
+		 OwnerName
+		 order by 
+		 UniqueID 
+		 )row_num
+
+from PortfolioProject.dbo.NashHousing
+ 
+)
+delete 
+from RownumCTE
+where row_num>1
+--order by  ParcelID
+
+select *
+
+from PortfolioProject.dbo.NashHousing
